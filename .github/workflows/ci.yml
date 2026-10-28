@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  host-tests:
+    name: Host tests + end-to-end simulation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ARM toolchain (for the ROM image used in the simulation)
+        run: sudo apt-get update -q && sudo apt-get install -y -q gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - name: Run tests
+        run: ./test/run_tests.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simulated-screens
+          path: test/out/shots/
+
+  gba-rom:
+    name: GBA pendant ROM (devkitARM)
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build multiboot ROM
+        working-directory: gba/pendant
+        run: make
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pendant_mb
+          path: gba/pendant/pendant_mb.gba
+
+  esp-firmware:
+    name: ESP-12F module firmware (PlatformIO)
+    runs-on: ubuntu-latest
+    needs: gba-rom
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('esp/platformio.ini') }}
+      - name: Install PlatformIO
+        run: pip install platformio
+      - uses: actions/download-artifact@v4
+        with:
+          name: pendant_mb
+          path: esp/data/rom
+      - name: Put ROM in the LittleFS image
+        run: mv esp/data/rom/pendant_mb.gba esp/data/rom/pendant.gba
+      - name: Build firmware
+        working-directory: esp
+        run: pio run -e esp12f
+      - name: Build LittleFS image
+        working-directory: esp
+        run: pio run -e esp12f -t buildfs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: esp12f-firmware
+          path: |
+            esp/.pio/build/esp12f/firmware.bin
+            esp/.pio/build/esp12f/littlefs.bin
