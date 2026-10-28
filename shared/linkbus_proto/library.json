@@ -1,0 +1,8 @@
+{
+  "name": "linkbus_proto",
+  "version": "1.0.0",
+  "description": "LinkBus v1 shared framing (GBA link-port modules)",
+  "build": { "srcDir": ".", "includeDir": "." },
+  "frameworks": "*",
+  "platforms": "*"
+}

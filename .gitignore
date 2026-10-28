@@ -1,0 +1,7 @@
+test/out/
+gba/pendant/build/
+gba/pendant/*.elf
+gba/pendant/*.gba
+gba/pendant/*.map
+esp/.pio/
+esp/data/rom/*.gba
